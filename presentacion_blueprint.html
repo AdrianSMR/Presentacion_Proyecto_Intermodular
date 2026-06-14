@@ -1,0 +1,1839 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MFA y Hardening SSH – TecnoServicios S.L.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #fdfdfd;
+      --grid-thin: rgba(180, 195, 210, 0.32);
+      --grid-thick: rgba(155, 170, 185, 0.55);
+      --ink: #1a2433;
+      --ink2: #4a5568;
+      --border: #2c3e50;
+      --blue: #2980b9;
+      --red: #c0392b;
+      --green: #27ae60;
+      --orange: #e67e22;
+      --sans: 'Inter', system-ui, sans-serif;
+      --mono: 'Space Mono', monospace;
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    @keyframes moveBackground {
+      0% {
+        transform: translate3d(-100px, 0, 0);
+      }
+
+      100% {
+        transform: translate3d(100px, 0, 0);
+      }
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      top: -200px;
+      left: -200px;
+      right: -200px;
+      bottom: -200px;
+      z-index: -1;
+      background-image:
+        linear-gradient(var(--grid-thin) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-thin) 1px, transparent 1px),
+        linear-gradient(var(--grid-thick) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-thick) 1px, transparent 1px);
+      background-size: 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+      animation: moveBackground 12s ease-in-out infinite alternate;
+      will-change: transform;
+    }
+
+    #deck {
+      display: flex;
+      height: 100vh;
+      transition: transform .65s var(--ease);
+    }
+
+    .slide {
+      flex: 0 0 100vw;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      padding: 5vh 5vw;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      top: 2.5vh;
+      bottom: 2.5vh;
+      left: 2.5vw;
+      right: 2.5vw;
+      border: 2px solid var(--border);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .slide::after {
+      content: "";
+      position: absolute;
+      top: 3.5vh;
+      bottom: 3.5vh;
+      left: 3.5vw;
+      right: 3.5vw;
+      border: 1px solid var(--grid-thick);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .ct {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .t-title {
+      font-size: 3vw;
+      font-weight: 800;
+      border-bottom: 3px solid var(--border);
+      padding-bottom: 1vh;
+      margin-bottom: 3vh;
+    }
+
+    .t-sub {
+      font-size: 2vw;
+      font-weight: 700;
+      margin-bottom: 2vh;
+    }
+
+    .t-h3 {
+      font-size: 1.6vw;
+      font-weight: 700;
+      color: var(--blue);
+      margin-bottom: 1vh;
+    }
+
+    .t-body {
+      font-size: 1.25vw;
+      line-height: 1.65;
+      margin-bottom: 1.5vh;
+    }
+
+    .t-small {
+      font-size: 1vw;
+      line-height: 1.55;
+    }
+
+    .t-mono {
+      font-family: var(--mono);
+    }
+
+    .t-blue {
+      color: var(--blue);
+    }
+
+    .t-red {
+      color: var(--red);
+    }
+
+    .t-green {
+      color: var(--green);
+    }
+
+    .t-center {
+      text-align: center;
+    }
+
+    .t-bold {
+      font-weight: 700;
+    }
+
+    .box {
+      background: #fff;
+      border: 2px solid var(--border);
+      padding: 2.5vh 2vw;
+      box-shadow: 5px 5px 0 var(--grid-thin);
+      transition: transform .25s var(--ease), box-shadow .25s var(--ease);
+    }
+
+    .box:hover {
+      transform: translateY(-4px);
+      box-shadow: 8px 8px 0 rgba(44, 62, 80, .18);
+    }
+
+    .box-accent {
+      border-left: 5px solid var(--blue);
+    }
+
+    .box-green {
+      border-color: var(--green);
+    }
+
+    .box-red {
+      border-color: var(--red);
+    }
+
+    .g2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3vw;
+    }
+
+    .g3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 2vw;
+    }
+
+    .tbl {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 2px solid var(--border);
+    }
+
+    .tbl th,
+    .tbl td {
+      border: 1px solid var(--border);
+      padding: 1.2vh 1vw;
+      font-size: 1.15vw;
+      text-align: left;
+    }
+
+    .tbl th {
+      background: rgba(0, 0, 0, .05);
+      font-weight: 700;
+    }
+
+    .term {
+      background: #fdfdfd;
+      border: 2px solid var(--border);
+      font-family: var(--mono);
+      font-size: 1vw;
+      padding: 2vh;
+      line-height: 1.5;
+    }
+
+    .term-dark {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      border-color: #333;
+    }
+
+    .term-hdr {
+      border-bottom: 2px solid var(--border);
+      margin: -2vh -2vh 2vh;
+      padding: 0.8vh 1vw;
+      display: flex;
+      gap: 6px;
+      background: rgba(0, 0, 0, .04);
+    }
+
+    .term-dark .term-hdr {
+      background: rgba(255, 255, 255, .06);
+      border-color: #444;
+    }
+
+    .term-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+    }
+
+    /* Solution Cards */
+    .solution-card {
+      background-color: white;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      padding: 3vh 2vw;
+    }
+
+    .solution-card.rejected {
+      border-color: #FC8181;
+    }
+
+    .solution-card.accepted {
+      border-color: #68D391;
+      border-width: 2px;
+      box-shadow: 0 10px 15px -3px rgba(100, 255, 218, 0.2), 0 4px 6px -2px rgba(100, 255, 218, 0.1);
+    }
+
+    .card-header-rejected {
+      color: #E53E3E;
+      display: flex;
+      align-items: flex-start;
+      gap: 1vw;
+      font-size: 1.5vw;
+      font-weight: 700;
+      margin-bottom: 2vh;
+    }
+
+    .card-header-accepted {
+      color: #38A169;
+      display: flex;
+      align-items: flex-start;
+      gap: 1vw;
+      font-size: 1.5vw;
+      font-weight: 700;
+      margin-bottom: 2vh;
+      line-height: 1.2;
+    }
+
+    .bg-danger-light {
+      background-color: #FC8181;
+    }
+
+    .bg-success-light {
+      background-color: #68D391;
+    }
+
+    .corner-accent {
+      position: absolute;
+      top: 0;
+      right: 0;
+      opacity: 0.1;
+      border-bottom-left-radius: 100%;
+      pointer-events: none;
+    }
+
+    .corner-accent.small {
+      width: 4vw;
+      height: 4vw;
+    }
+
+    .corner-accent.large {
+      width: 6vw;
+      height: 6vw;
+    }
+
+    .sol-sect {
+      margin-bottom: 1.5vh;
+    }
+
+    .sol-sect-title {
+      font-weight: 700;
+      font-size: 1.2vw;
+      margin-bottom: 0.5vh;
+    }
+
+    .sol-text {
+      font-size: 1.1vw;
+      line-height: 1.6;
+      color: var(--ink2);
+    }
+
+    .sol-footer {
+      margin-top: 2vh;
+      padding-top: 1vh;
+      border-top: 1px solid #E2E8F0;
+      font-size: 1vw;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .sol-footer-accepted {
+      border-top-color: rgba(104, 211, 145, 0.3);
+      color: #38A169;
+    }
+
+    /* Flow diagram */
+    .flow-line {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    .flow-node {
+      flex: 1;
+      border: 2px solid var(--border);
+      padding: 1.8vh 1vw;
+      background: #fff;
+      text-align: center;
+      box-shadow: 4px 4px 0 var(--grid-thin);
+      transition: transform .2s var(--ease);
+    }
+
+    .flow-node:hover {
+      transform: translateY(-3px);
+    }
+
+    .flow-arr {
+      flex: 0 0 3vw;
+      text-align: center;
+      font-size: 2vw;
+      font-weight: 700;
+      color: var(--blue);
+    }
+
+    [data-a] {
+      opacity: 0;
+      transform: translateY(22px);
+    }
+
+    .is-active [data-a] {
+      animation: au .55s var(--ease) forwards;
+    }
+
+    @keyframes au {
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    [data-d="1"] {
+      animation-delay: .08s;
+    }
+
+    [data-d="2"] {
+      animation-delay: .18s;
+    }
+
+    [data-d="3"] {
+      animation-delay: .30s;
+    }
+
+    [data-d="4"] {
+      animation-delay: .42s;
+    }
+
+    [data-d="5"] {
+      animation-delay: .56s;
+    }
+
+    #nav {
+      position: fixed;
+      bottom: 3vh;
+      right: 3.5vw;
+      z-index: 200;
+      font-family: var(--mono);
+      font-size: 1.1vw;
+      font-weight: 700;
+      background: #fff;
+      padding: .5vh 1.2vw;
+      border: 2px solid var(--border);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="deck">
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 1 · PORTADA
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct" style="justify-content:center; align-items:center; text-align:center; gap:3vh;">
+        <div data-a data-d="1">
+          <img src="imagenes/logo_tecnoservicios.png" alt="TecnoServicios S.L." style="max-height:38vh;" />
+        </div>
+        <div data-a data-d="2" style="font-size:2.2vw; font-weight:800; letter-spacing:-.02em;">
+          Proyecto Intermodular · 2.º SMR
+        </div>
+        <div data-a data-d="3" style="font-size:3.8vw; font-weight:800; color:var(--blue); line-height:1.15;">
+          MFA y Hardening SSH
+        </div>
+        <div data-a data-d="4" style="font-size:1.4vw; color:var(--ink2);">
+          Adrián Sánchez Martínez &nbsp;·&nbsp; Iván Sánchez Mártinez &nbsp;·&nbsp; Francisco Zamora Abellán
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 2 · INTRODUCCIÓN AL PROBLEMA
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="g2" style="flex:1; align-items:stretch;">
+          <div class="box" data-a data-d="1"
+            style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; gap:2vh;">
+            <div class="t-title" style="border:none; padding:0; margin:0; font-size:3.5vw;">EL PROBLEMA</div>
+
+            <div style="display:flex; flex-direction:column; width:80%; align-items:center; margin:1vh 0;">
+              <!-- Top Labels -->
+              <div
+                style="display:flex; justify-content:space-between; width:100%; color:var(--red); font-weight:700; font-family:var(--mono); font-size:1vw; margin-bottom:1.5vh;">
+                <span>📖 FUERZA BRUTA →</span>
+                <span>← FUERZA BRUTA 📖</span>
+              </div>
+
+              <!-- Server Box -->
+              <div
+                style="border:2px solid var(--border); padding:2.5vh 2vw; background:var(--bg); width:100%; display:flex; flex-direction:column; align-items:center; box-shadow: 4px 4px 0 var(--grid-thin);">
+                <img src="imagenes/img_server.png" alt="Server" style="max-height:12vh; margin-bottom:1.5vh;" />
+                <div
+                  style="font-family:var(--mono); font-size:1.6vw; font-weight:800; color:var(--ink); margin-bottom:1.5vh;">
+                  SERVER</div>
+                <div style="width:100%; border-top:2px dashed var(--border); margin-bottom:1.5vh;"></div>
+                <div
+                  style="background:var(--ink); color:#fff; padding:.6vh 1.5vw; font-family:var(--mono); font-size:1vw; width:100%;">
+                  SSH : PUERTO 22
+                </div>
+                <div style="width:12px; height:12px; border-radius:50%; background:var(--red); margin-top:2vh;"></div>
+              </div>
+
+              <!-- Bottom Labels -->
+              <div
+                style="display:flex; justify-content:space-between; width:100%; color:var(--red); font-weight:700; font-family:var(--mono); font-size:1vw; margin-top:1.5vh;">
+                <span>📖 DICCIONARIO →</span>
+                <span>← BOTNETS 📖</span>
+              </div>
+            </div>
+
+            <p class="t-body" style="max-width:90%;">El servidor Linux central de TecnoServicios S.L. sufre ataques de
+              fuerza bruta incesantes hacia el usuario <strong>root</strong> en su acceso remoto (SSH). Depende
+              exclusivamente de un sistema de usuario y contraseña tradicional.</p>
+          </div>
+          <div class="box" data-a data-d="2"
+            style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; gap:2vh;">
+            <div class="t-title" style="border:none; padding:0; margin:0; font-size:3.5vw;">SOLUCIÓN PLANTEADA</div>
+            <div style="margin:2vh 0;">
+              <img src="imagenes/img_solucion.png" alt="Solución Planteada" style="max-height:16vh;" />
+            </div>
+            <p class="t-body">Implementar una capa extra de seguridad para proteger los datos de la empresa, pero con
+              una condición innegociable:</p>
+            <div
+              style="border:2px dashed var(--orange); padding:2.5vh 2vw; background:rgba(230,126,34,.05); max-width:90%; display:flex; align-items:center; gap:1.5vw; justify-content:center;">
+              <img src="imagenes/img_caution.png" alt="Caution" style="max-height:6vh; flex-shrink:0;" />
+              <p
+                style="font-size:1.5vw; font-weight:800; color:var(--orange); margin:0; line-height:1.35; font-style:italic; text-align:left;">
+                NO SE PUEDE BLOQUEAR EL FLUJO DE TRABAJO OPERATIVO DEL EQUIPO TÉCNICO.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 3 · SOLUCIONES EVALUADAS
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Soluciones Evaluadas</div>
+        <div class="g3" style="flex:1;" data-a data-d="2">
+          <!-- Card 1 -->
+          <article class="solution-card rejected">
+            <div class="corner-accent small bg-danger-light"></div>
+            <div>
+              <h2 class="card-header-rejected">
+                <svg style="width:1.8vw; height:1.8vw; flex-shrink:0;" fill="none" stroke="currentColor"
+                  stroke-width="2.5" viewBox="0 0 24 24">
+                  <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+                Claves SSH (Criptografía Asimétrica)
+              </h2>
+              <div>
+                <div class="sol-sect">
+                  <h3 class="sol-sect-title" style="color:#38A169;">Ventajas:</h3>
+                  <p class="sol-text">Alta seguridad en el canal remoto. Elimina la contraseña del tránsito de red.</p>
+                </div>
+                <div class="sol-sect">
+                  <h3 class="sol-sect-title" style="color:#E53E3E;">Desventajas:</h3>
+                  <p class="sol-text">No protege el login local si la clave privada es robada. Complejidad alta de
+                    gestión de claves para un equipo dinámico.</p>
+                </div>
+              </div>
+            </div>
+            <div class="sol-footer">
+              <span style="color:#E53E3E; margin-right:0.5vw;">Descartada:</span>demasiada fricción operativa para un
+              equipo pequeño con rotación de personal.
+            </div>
+          </article>
+
+          <!-- Card 2 -->
+          <article class="solution-card rejected">
+            <div class="corner-accent small bg-danger-light"></div>
+            <div>
+              <h2 class="card-header-rejected">
+                <svg style="width:1.8vw; height:1.8vw; flex-shrink:0;" fill="none" stroke="currentColor"
+                  stroke-width="2.5" viewBox="0 0 24 24">
+                  <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+                Port Knocking
+              </h2>
+              <div>
+                <div class="sol-sect">
+                  <h3 class="sol-sect-title" style="color:#38A169;">Ventajas:</h3>
+                  <p class="sol-text">Oculta el servicio SSH de los escáneres masivos.</p>
+                </div>
+                <div class="sol-sect">
+                  <h3 class="sol-sect-title" style="color:#E53E3E;">Desventajas:</h3>
+                  <p class="sol-text">Seguridad por ocultación. Requiere crear y gestionar reglas dinámicas complejas en
+                    el firewall de Linux (UFW/iptables), lo cual dificulta la administración. Usabilidad muy baja.</p>
+                </div>
+              </div>
+            </div>
+            <div class="sol-footer">
+              <span style="color:#E53E3E; margin-right:0.5vw;">Descartada:</span>la gestión del firewall se volvía
+              inmanejable y bloqueaba al equipo técnico.
+            </div>
+          </article>
+
+          <!-- Card 3 -->
+          <article class="solution-card accepted">
+            <div class="corner-accent large bg-success-light"></div>
+            <div>
+              <h2 class="card-header-accepted">
+                <svg style="width:2.2vw; height:2.2vw; flex-shrink:0;" fill="none" stroke="currentColor"
+                  stroke-width="3" viewBox="0 0 24 24">
+                  <path d="M4.5 12.75l6 6 9-13.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+                2FA (TOTP) + Fail2Ban + Cambio de Puerto
+              </h2>
+              <div>
+                <div class="sol-sect">
+                  <h3 class="sol-sect-title" style="color:#38A169;">Ventajas:</h3>
+                  <p class="sol-text">Seguridad real basada en dos factores. Protege login local y remoto a través de
+                    PAM. Bloqueo automático de bots. Flujo de trabajo rápido.</p>
+                </div>
+                <div class="sol-sect">
+                  <h3 class="sol-sect-title" style="color:#E53E3E;">Desventajas:</h3>
+                  <p class="sol-text">Requiere que cada técnico lleve su app TOTP en el móvil. Necesita sincronización
+                    horaria (NTP).</p>
+                </div>
+              </div>
+            </div>
+            <div class="sol-footer sol-footer-accepted">
+              Elegida: equilibrio óptimo entre seguridad, usabilidad y coste cero en licencias.
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 4 · SOLUCIÓN ADOPTADA
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">La Solución Adoptada: Tres Capas de Defensa</div>
+        <div class="g3" style="margin-top:2vh;" data-a data-d="2">
+          <div class="box t-center">
+            <div style="font-size:4vw; margin-bottom:1vh;">🚪</div>
+            <div class="t-h3">Capa 1 · Evasión</div>
+            <div class="t-sub" style="color:var(--blue);">Puerto 52222</div>
+            <p class="t-body">Trasladamos el servicio SSH fuera del puerto estándar TCP/22. Esto evade los rastreos
+              masivos de botnets y herramientas como Shodan o Masscan.</p>
+          </div>
+          <div class="box t-center">
+            <div style="font-size:4vw; margin-bottom:1vh;">🔒</div>
+            <div class="t-h3">Capa 2 · Prevención Activa</div>
+            <div class="t-sub" style="color:var(--blue);">Fail2Ban + UFW</div>
+            <p class="t-body">Un centinela que vigila los logs en tiempo real. Si detecta N intentos fallidos, modifica
+              el cortafuegos (UFW) para bloquear la IP atacante durante 24 horas.</p>
+          </div>
+          <div class="box t-center">
+            <div style="font-size:4vw; margin-bottom:1vh;">📱</div>
+            <div class="t-h3">Capa 3 · Autenticación Fuerte</div>
+            <div class="t-sub" style="color:var(--blue);">MFA (PAM + TOTP)</div>
+            <p class="t-body">La barrera final. Aunque un atacante conozca la contraseña, necesita un código temporal de
+              6 dígitos generado en el móvil del técnico.</p>
+          </div>
+        </div>
+        <div class="box t-center" data-a data-d="3"
+          style="margin-top:3vh; display:flex; align-items:center; justify-content:center; gap:2vw; padding:2vh;">
+          <div class="t-h3" style="margin:0;">Infraestructura Base:</div>
+          <img src="imagenes/logo_ubuntu.png" alt="Ubuntu Server" style="max-height:7vh;" />
+          <span class="t-body t-bold">Ubuntu Server 24.04 LTS</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 5 · TECNOLOGÍA CLAVE: PAM
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Tecnología Clave: MODULOS PAM</div>
+        <div class="g2" style="flex:1; margin-top:0.5vh;">
+
+          <!-- COLUMNA IZQUIERDA -->
+          <div data-a data-d="2" style="display:flex; flex-direction:column; gap:1vh;">
+            <div class="box box-accent" style="padding:1.2vh 1.5vw;">
+              <div class="t-h3" style="font-size:1.1vw; margin-bottom:0.4vh;">🧩 ¿Qué son los modulos PAM?</div>
+              <p class="t-body" style="font-size:0.85vw; line-height:1.35;">Los módulos PAM son un marco flexible que
+                centraliza la autenticación en Linux, actuando como una capa intermedia entre las aplicaciones (como SSH
+                o <code
+                  style="background:rgba(0,0,0,.05); padding:2px 4px; border-radius:3px; font-family:var(--mono);">sudo</code>)
+                y los mecanismos de seguridad. Permiten modificar las políticas de acceso (como añadir 2FA o
+                restricciones) sin tener que recompilar ningún programa del sistema. Se configuran en <code
+                  style="background:rgba(0,0,0,.05); padding:2px 4px; border-radius:3px; font-family:var(--mono);">/etc/pam.d/</code>
+                mediante cuatro tareas clave: autenticación, gestión de cuentas, contraseñas y sesiones. Al ser
+                componentes "intercambiables", permiten a los administradores añadir, quitar o combinar reglas de
+                seguridad sobre la marcha de forma ágil y totalmente segura.</p>
+            </div>
+
+            <div class="box box-accent" style="padding:1.2vh 1.5vw;">
+              <div class="t-h3" style="font-size:1.1vw; margin-bottom:0.4vh;">⚙️ ¿Cómo funciona?</div>
+              <p class="t-body" style="font-size:0.85vw; line-height:1.35;">Cuando un programa requiere verificar la
+                identidad de un usuario, invoca a la biblioteca de PAM en lugar de comprobar las credenciales por sí
+                mismo. PAM consulta el archivo de configuración en <code
+                  style="background:rgba(0,0,0,.05); padding:2px 4px; border-radius:3px; font-family:var(--mono);">/etc/pam.d/</code>
+                correspondiente a esa aplicación para saber exactamente qué reglas debe aplicar. Luego, ejecuta
+                secuencialmente los módulos indicados para validar la contraseña, comprobar restricciones de cuenta o
+                configurar la sesión. Finalmente, PAM recopila los resultados de todos los módulos y devuelve un
+                veredicto de "éxito" o "fallo", permitiendo o denegando el acceso de forma transparente.</p>
+            </div>
+
+            <div class="box box-accent" style="padding:1.2vh 1.5vw;">
+              <div class="t-h3" style="font-size:1.1vw; margin-bottom:0.4vh;">🔑 ¿Por qué es clave para nuestro
+                proyecto?</div>
+              <p class="t-body" style="font-size:0.85vw; line-height:1.35;">Nos permite inyectar un paso extra de
+                verificación (el código TOTP) en el proceso de login SSH sin modificar el propio demonio SSH. Añadimos
+                el módulo <code
+                  style="background:rgba(0,0,0,.05); padding:2px 4px; border-radius:3px; font-family:var(--mono);">pam_google_authenticator.so</code>
+                a la pila y PAM se encarga del resto.</p>
+            </div>
+          </div>
+
+          <!-- COLUMNA DERECHA -->
+          <div data-a data-d="3" style="display:flex; flex-direction:column; gap:1vh;">
+            <div class="box"
+              style="background:rgba(41,128,185,.04); border: 2px dashed rgba(41,128,185,.3); flex:1; padding:1.5vh 1.5vw;">
+              <div class="t-h3" style="font-size:1.25vw; color:var(--blue);">Flujo simplificado de PAM</div>
+              <div style="display:flex; flex-direction:column; gap:0.8vh; margin-top:1vh;">
+
+                <div
+                  style="align-self:flex-start; border:2px solid var(--border); padding:0.6vh 1vw; background:#fff; box-shadow:3px 3px 0 var(--border); width:90%;">
+                  <div style="font-family:var(--mono); font-size:0.85vw; font-weight:700;">🚪 sshd pide login</div>
+                  <div class="term term-dark" style="margin-top:0.3vh; padding:0.5vh; font-size:0.7vw;">ssh
+                    user@host<br><span style="color:#888;">Password:</span></div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:0.8vw; margin-left:2vw; width:85%;">
+                  <span style="font-size:1.2vw; color:var(--blue);">↳</span>
+                  <div
+                    style="border:2px solid var(--border); padding:0.6vh 1vw; background:#fff; box-shadow:3px 3px 0 var(--border); width:100%;">
+                    <div style="font-family:var(--mono); font-size:0.85vw; font-weight:700;">🔑 PAM: contraseña</div>
+                    <div class="term term-dark" style="margin-top:0.3vh; padding:0.5vh; font-size:0.7vw;">Password:
+                      ********<br><span style="color:#4caf50;">Authentication successful. Proceeding to next PAM
+                        module...</span></div>
+                  </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:0.8vw; margin-left:4vw; width:80%;">
+                  <span style="font-size:1.2vw; color:var(--blue);">↳</span>
+                  <div
+                    style="border:2px solid var(--blue); padding:0.6vh 1vw; background:rgba(41,128,185,.08); box-shadow:3px 3px 0 var(--blue); width:100%;">
+                    <div style="font-family:var(--mono); font-size:0.75vw; font-weight:700; color:var(--blue);">📱 PAM:
+                      módulo TOTP con prothon authenticator</div>
+                    <div class="term term-dark"
+                      style="margin-top:0.3vh; padding:0.5vh; font-size:0.7vw; border-color:var(--blue);">Verification
+                      code:<br>******</div>
+                  </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:0.8vw; margin-left:6vw; width:75%;">
+                  <span style="font-size:1.2vw; color:var(--green);">↳</span>
+                  <div
+                    style="border:2px solid var(--green); padding:0.6vh 1vw; background:rgba(39,174,96,.08); box-shadow:3px 3px 0 var(--green); width:100%;">
+                    <div style="font-family:var(--mono); font-size:0.85vw; font-weight:800; color:var(--green);">✅
+                      Acceso concedido</div>
+                    <div class="term term-dark"
+                      style="margin-top:0.3vh; padding:0.5vh; font-size:0.7vw; border-color:var(--green);">Welcome to
+                      Ubuntu 22.04 LTS<br><span style="color:#888;">user@host:~$</span></div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 6 · TECNOLOGÍA CLAVE: FAIL2BAN
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Tecnología Clave: Fail2Ban</div>
+        <div class="g2" style="flex:1; margin-top:0.5vh;">
+
+          <!-- COLUMNA IZQUIERDA -->
+          <div data-a data-d="2" style="display:flex; flex-direction:column; gap:1vh;">
+            <div class="box box-accent" style="padding:1.2vh 1.5vw;">
+              <div class="t-h3" style="font-size:1.25vw; margin-bottom:0.5vh;">🛡️ ¿Qué es Fail2Ban?</div>
+              <p class="t-body" style="font-size:0.95vw; line-height:1.4;">Es un <strong>servicio de prevención de
+                  intrusiones</strong> (IPS) de código abierto que actúa como un centinela perimetral. Monitoriza
+                continuamente los archivos de log del sistema en busca de ataques de fuerza bruta hacia el usuario root
+                u otros vectores.</p>
+            </div>
+
+            <div class="box box-accent" style="padding:1.2vh 1.5vw;">
+              <div class="t-h3" style="font-size:1.25vw; margin-bottom:0.5vh;">⚙️ ¿Cómo funciona?</div>
+              <p class="t-body" style="font-size:0.95vw; line-height:1.4;">Opera mediante <strong>«jaulas»
+                  (jails)</strong>. Al detectar demasiados intentos fallidos desde una IP en un intervalo de tiempo,
+                inyecta automáticamente una regla de bloqueo en el cortafuegos, mitigando la amenaza instantáneamente.
+              </p>
+              <div class="term term-dark"
+                style="margin-top:0.8vh; padding:0.6vh 1vw; font-size:0.75vw; line-height:1.3; display:grid; grid-template-columns:1fr 1fr; gap:0.5vw;">
+                <div style="grid-column:1/-1; color:#888;"># /etc/fail2ban/jail.local</div>
+                <div>[sshd]<br>enabled = true<br>port = 52222<br>maxretry = 3</div>
+                <div>logpath = %(sshd_log)s<br>backend = systemd<br>findtime = 10m<br>bantime = 24h</div>
+                <div style="grid-column:1/-1;">ignoreip = 127.0.0.1/8 ::1</div>
+              </div>
+            </div>
+
+            <div class="box box-accent" style="padding:1vh 1.5vw;">
+              <div class="t-h3" style="font-size:1.2vw; margin-bottom:0.4vh;">✅ ¿Por qué lo hemos elegido?</div>
+              <p class="t-body" style="font-size:0.88vw; line-height:1.35; margin-bottom:0.3vh;">✔️ <strong>Bloqueo
+                  automatizado:</strong> Veta IPs hostiles tras 3 accesos fallidos en el puerto 52222, repeliendo
+                botnets en tiempo real.</p>
+              <p class="t-body" style="font-size:0.88vw; line-height:1.35; margin-bottom:0.3vh;">✔️ <strong>Integración
+                  con UFW:</strong> Aplica de forma directa reglas de baneo temporal (24h) en el cortafuegos nativo del
+                servidor.</p>
+              <p class="t-body" style="font-size:0.88vw; line-height:1.35; margin-bottom:0vh;">✔️ <strong>Consumo
+                  eficiente:</strong> Solución open-source ultra-ligera (<15MB RAM) integrada en systemd sin degradar el
+                  rendimiento.</p>
+            </div>
+          </div>
+
+          <!-- COLUMNA DERECHA -->
+          <div data-a data-d="3" style="display:flex; flex-direction:column; gap:1vh;">
+            <div class="box"
+              style="background:rgba(192,57,43,.04); border: 2px dashed rgba(192,57,43,.3); flex:1; padding:1.5vh 1.5vw;">
+              <div class="t-h3 t-red" style="font-size:1.25vw;">Flujo detallado de Fail2Ban</div>
+              <div style="display:flex; flex-direction:column; gap:0.8vh; margin-top:1vh;">
+
+                <div
+                  style="align-self:flex-start; border:2px solid var(--border); padding:0.6vh 1vw; background:#fff; box-shadow:3px 3px 0 var(--border); width:90%;">
+                  <div style="font-family:var(--mono); font-size:0.85vw; font-weight:700;">🚪 Intento fallido SSH</div>
+                  <div class="term term-dark" style="margin-top:0.3vh; padding:0.5vh; font-size:0.7vw;">Failed password
+                    for root from 192.168.1.100 port 52222 ssh2</div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:0.8vw; margin-left:2vw; width:85%;">
+                  <span style="font-size:1.2vw; color:var(--red);">↳</span>
+                  <div
+                    style="border:2px solid var(--border); padding:0.6vh 1vw; background:#fff; box-shadow:3px 3px 0 var(--border); width:100%;">
+                    <div style="font-family:var(--mono); font-size:0.85vw; font-weight:700;">📝 Registro en auth.log
+                    </div>
+                    <div class="term term-dark" style="margin-top:0.3vh; padding:0.5vh; font-size:0.7vw;">tail -f
+                      /var/log/auth.log</div>
+                  </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:0.8vw; margin-left:4vw; width:80%;">
+                  <span style="font-size:1.2vw; color:var(--red);">↳</span>
+                  <div
+                    style="border:2px solid var(--red); padding:0.6vh 1vw; background:rgba(192,57,43,.05); box-shadow:3px 3px 0 var(--red); width:100%;">
+                    <div style="font-family:var(--mono); font-size:0.85vw; font-weight:700; color:var(--red);">🔍
+                      Fail2Ban detecta patrón</div>
+                    <div class="term term-dark" style="margin-top:0.3vh; padding:0.5vh; font-size:0.7vw;">
+                      fail2ban-client status sshd<br>|- Currently failed: 1</div>
+                  </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:0.8vw; margin-left:6vw; width:75%;">
+                  <span style="font-size:1.2vw; color:var(--red);">↳</span>
+                  <div
+                    style="border:2px solid var(--red); padding:0.6vh 1vw; background:rgba(192,57,43,.15); box-shadow:3px 3px 0 var(--red); width:100%;">
+                    <div style="font-family:var(--mono); font-size:0.85vw; font-weight:800; color:var(--red);">⛔ UFW
+                      bloquea IP</div>
+                    <div class="term term-dark"
+                      style="margin-top:0.3vh; padding:0.5vh; font-size:0.7vw; border-color:var(--red);">ufw deny from
+                      192.168.1.100<br>[ 1] 192.168.1.100 DENY IN</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 7 · STACK TECNOLÓGICO COMPLETO
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div style="margin-bottom:1vh;" data-a data-d="1">
+          <h1 style="font-family:var(--sans); font-size:2.8vw; font-weight:800; color:#000000; margin:0 0 0.5vh 0; letter-spacing:-0.02em;">Stack Tecnológico</h1>
+          <div style="height:0.4vh; width:6vw; background-color:#004665;"></div>
+        </div>
+        <div class="g3" style="margin-top:1.5vh;" data-a data-d="2">
+          <!-- Card 1 -->
+          <div style="background-color:#ffffff; border:1px solid #c5c6cd; border-radius:0.5vw; padding:1.5vw; display:flex; flex-direction:column; gap:1vw; box-shadow:0 1px 2px rgba(0,0,0,0.05); transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">
+            <div style="display:flex; align-items:center; gap:1vw;">
+              <div style="width:3vw; height:3vw; border-radius:50%; background-color:#d8e3fb; display:flex; align-items:center; justify-content:center; color:#000000; flex-shrink:0;">
+                <span class="material-symbols-outlined" style="font-size:1.8vw;">lock</span>
+              </div>
+              <h2 style="font-family:var(--sans); font-size:1.4vw; font-weight:700; color:#000000; margin:0; line-height:1.2;">OpenSSH-Server</h2>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.8vw; margin-top:0.5vw;">
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Qué es</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Conjunto de utilidades de red que proporcionan comunicaciones cifradas seguras entre dos nodos no confiables a través de una red insegura.</p>
+              </div>
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Rol</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Provee el servicio base de conectividad remota que será fortificado mediante PAM y las políticas de acceso.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div style="background-color:#ffffff; border:1px solid #c5c6cd; border-radius:0.5vw; padding:1.5vw; display:flex; flex-direction:column; gap:1vw; box-shadow:0 1px 2px rgba(0,0,0,0.05); transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">
+            <div style="display:flex; align-items:center; gap:1vw;">
+              <div style="width:3vw; height:3vw; border-radius:50%; background-color:#d8e3fb; display:flex; align-items:center; justify-content:center; color:#000000; flex-shrink:0;">
+                <span class="material-symbols-outlined" style="font-size:1.8vw;">shield</span>
+              </div>
+              <h2 style="font-family:var(--sans); font-size:1.4vw; font-weight:700; color:#000000; margin:0; line-height:1.2;">Fail2Ban</h2>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.8vw; margin-top:0.5vw;">
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Qué es</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Un framework de prevención de intrusiones que escanea los archivos de registro y banea direcciones IP que muestran comportamientos maliciosos.</p>
+              </div>
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Rol</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Protege el servicio SSH mitigando ataques de fuerza bruta al bloquear automáticamente IPs atacantes.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div style="background-color:#ffffff; border:1px solid #c5c6cd; border-radius:0.5vw; padding:1.5vw; display:flex; flex-direction:column; gap:1vw; box-shadow:0 1px 2px rgba(0,0,0,0.05); transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">
+            <div style="display:flex; align-items:center; gap:1vw;">
+              <div style="width:3vw; height:3vw; border-radius:50%; background-color:#d8e3fb; display:flex; align-items:center; justify-content:center; color:#000000; flex-shrink:0;">
+                <span class="material-symbols-outlined" style="font-size:1.8vw;">key</span>
+              </div>
+              <h2 style="font-family:var(--sans); font-size:1.4vw; font-weight:700; color:#000000; margin:0; line-height:1.2;">Google-authenticator y<br>Proton Authenticator</h2>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.8vw; margin-top:0.5vw;">
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Qué es</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Módulo Pluggable Authentication Module (PAM) y aplciacion de generacion de codigos TOTP para integrar verificación en dos pasos (2FA) en sistemas Linux.</p>
+              </div>
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Rol</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Garantizan que el acceso SSH requiera tanto una clave/contraseña válida como un token TOTP temporal.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4 -->
+          <div style="background-color:#ffffff; border:1px solid #c5c6cd; border-radius:0.5vw; padding:1.5vw; display:flex; flex-direction:column; gap:1vw; box-shadow:0 1px 2px rgba(0,0,0,0.05); transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">
+            <div style="display:flex; align-items:center; gap:1vw;">
+              <div style="width:3vw; height:3vw; border-radius:50%; background-color:#d8e3fb; display:flex; align-items:center; justify-content:center; color:#000000; flex-shrink:0;">
+                <span class="material-symbols-outlined" style="font-size:1.8vw;">schedule</span>
+              </div>
+              <h2 style="font-family:var(--sans); font-size:1.4vw; font-weight:700; color:#000000; margin:0; line-height:1.2;">Chrony (NTP)</h2>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.8vw; margin-top:0.5vw;">
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Qué es</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Una implementación versátil y precisa del Network Time Protocol (NTP) para sincronizar el reloj del sistema.</p>
+              </div>
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Rol</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Vital para la generación correcta de tokens TOTP, ya que dependen estrictamente de una sincronización de tiempo exacta.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 5 -->
+          <div style="background-color:#ffffff; border:1px solid #c5c6cd; border-radius:0.5vw; padding:1.5vw; display:flex; flex-direction:column; gap:1vw; box-shadow:0 1px 2px rgba(0,0,0,0.05); transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">
+            <div style="display:flex; align-items:center; gap:1vw;">
+              <div style="width:3vw; height:3vw; border-radius:50%; background-color:#d8e3fb; display:flex; align-items:center; justify-content:center; color:#000000; flex-shrink:0;">
+                <span class="material-symbols-outlined" style="font-size:1.8vw;">qr_code</span>
+              </div>
+              <h2 style="font-family:var(--sans); font-size:1.4vw; font-weight:700; color:#000000; margin:0; line-height:1.2;">libqrencode4</h2>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.8vw; margin-top:0.5vw;">
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Qué es</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Una biblioteca en C para codificar datos en un símbolo de código de barras 2D (Código QR).</p>
+              </div>
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Rol</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Permite renderizar el código QR en la terminal durante el registro inicial para escanearlo con proton authenticator.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 6 -->
+          <div style="background-color:#ffffff; border:1px solid #c5c6cd; border-radius:0.5vw; padding:1.5vw; display:flex; flex-direction:column; gap:1vw; box-shadow:0 1px 2px rgba(0,0,0,0.05); transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">
+            <div style="display:flex; align-items:center; gap:1vw;">
+              <div style="width:3vw; height:3vw; border-radius:50%; background-color:#d8e3fb; display:flex; align-items:center; justify-content:center; color:#000000; flex-shrink:0;">
+                <span class="material-symbols-outlined" style="font-size:1.8vw;">security</span>
+              </div>
+              <h2 style="font-family:var(--sans); font-size:1.4vw; font-weight:700; color:#000000; margin:0; line-height:1.2;">UFW</h2>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.8vw; margin-top:0.5vw;">
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Qué es</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Uncomplicated Firewall, una interfaz simplificada para iptables diseñada para facilitar la configuración de cortafuegos.</p>
+              </div>
+              <div>
+                <h3 style="font-family:var(--mono); font-size:0.75vw; text-transform:uppercase; letter-spacing:0.05em; color:#004665; margin:0 0 0.4vw 0; font-weight:600;">Rol</h3>
+                <p style="font-family:var(--sans); font-size:0.95vw; color:#111111; margin:0; line-height:1.6;">Controla el tráfico de red entrante y saliente, permitiendo solo las conexiones esenciales (como el puerto SSH personalizado).</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 8 · FLUJO DE ACCESO (LINEAL)
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Interacción de Tecnologías: El Flujo de Acceso</div>
+        <p class="t-body" data-a data-d="2" style="color:var(--ink2); margin-bottom:3vh;">Cuando un usuario (legítimo o
+          atacante) intenta acceder al servidor, su conexión atraviesa secuencialmente las siguientes etapas. Si falla
+          en cualquiera de ellas, el acceso es denegado de inmediato.</p>
+
+        <!-- LÍNEA 1: Pasos 1-3 -->
+        <div class="flow-line" data-a data-d="3">
+          <div class="flow-node" style="border-color:var(--border);">
+            <div style="font-size:2vw; margin-bottom:.5vh;">🚪</div>
+            <div class="t-h3" style="font-size:1.2vw; margin-bottom:.5vh;">1. Petición TCP</div>
+            <p class="t-small">El usuario abre conexión SSH apuntando al puerto <strong>52222</strong> (no al 22).</p>
+          </div>
+          <div class="flow-arr">→</div>
+          <div class="flow-node" style="border-color:var(--red); border-width:3px;">
+            <div style="font-size:2vw; margin-bottom:.5vh;">🛑</div>
+            <div class="t-h3 t-red" style="font-size:1.2vw; margin-bottom:.5vh;">2. Filtro UFW + Fail2Ban</div>
+            <p class="t-small">¿Está la IP en la lista de baneados? <strong class="t-red">Sí → DROP.</strong> No →
+              Continúa.</p>
+          </div>
+          <div class="flow-arr">→</div>
+          <div class="flow-node" style="border-color:var(--border);">
+            <div style="font-size:2vw; margin-bottom:.5vh;">🔑</div>
+            <div class="t-h3" style="font-size:1.2vw; margin-bottom:.5vh;">3. Autenticación Pública</div>
+            <p class="t-small">¿La clave RSA es válida? <strong class="t-red">No → Rechazo.</strong> Sí → Continúa.</p>
+          </div>
+          <div class="flow-arr">→</div>
+          <div class="flow-node" style="border-color:var(--border);">
+            <div style="font-size:2vw; margin-bottom:.5vh;">📱</div>
+            <div class="t-h3" style="font-size:1.2vw; margin-bottom:.5vh;">4. Desafío PAM (MFA)</div>
+            <p class="t-small">sshd delega a PAM. Se solicita código TOTP al usuario.</p>
+          </div>
+        </div>
+
+        <!-- LÍNEA 2: Pasos 5-6 -->
+        <div class="flow-line" style="justify-content:center; margin-top:2vh;" data-a data-d="4">
+          <div class="flow-node" style="border-color:var(--border);">
+            <div style="font-size:2vw; margin-bottom:.5vh;">🔢</div>
+            <div class="t-h3" style="font-size:1.2vw; margin-bottom:.5vh;">5. Verificación TOTP</div>
+            <p class="t-small">El módulo <code>pam_google_authenticator.so</code> valida el código contra
+              <code>~/.google_authenticator</code>.</p>
+          </div>
+          <div class="flow-arr">→</div>
+          <div class="flow-node" style="border-color:var(--green); border-width:3px; background:rgba(39,174,96,.04);">
+            <div style="font-size:2vw; margin-bottom:.5vh;">✅</div>
+            <div class="t-h3 t-green" style="font-size:1.2vw; margin-bottom:.5vh;">6. Acceso Concedido</div>
+            <p class="t-small">Shell habilitada. El evento se registra en <code>auth.log</code> para auditoría.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 9 · ESCENARIO DE DEMOSTRACIÓN
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Escenario de Demostración</div>
+        <div style="position:relative; flex:1; margin-top:2vh;" data-a data-d="2">
+          <!-- Connection Lines (SVG) -->
+          <svg style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;">
+            <!-- Server to Switch -->
+            <line stroke="var(--ink)" stroke-width="2" x1="16.66%" x2="50%" y1="50%" y2="50%"></line>
+            <text fill="var(--ink2)" font-family="var(--mono)" font-size="1vw" x="25%" y="48%">fa0/1</text>
+            <text fill="var(--ink2)" font-family="var(--mono)" font-size="1vw" x="43%" y="48%">gi0/1</text>
+            <!-- Switch to Windows 10 -->
+            <line stroke="var(--ink)" stroke-width="2" x1="50%" x2="83.33%" y1="50%" y2="25%"></line>
+            <text fill="var(--ink2)" font-family="var(--mono)" font-size="1vw" x="55%" y="40%">fa0/2</text>
+            <text fill="var(--ink2)" font-family="var(--mono)" font-size="1vw" x="76%" y="27%">fa0</text>
+            <!-- Switch to Lubuntu -->
+            <line stroke="var(--ink)" stroke-dasharray="5,5" stroke-width="2" x1="50%" x2="83.33%" y1="50%" y2="75%">
+            </line>
+            <text fill="var(--ink2)" font-family="var(--mono)" font-size="1vw" x="55%" y="62%">fa0/3</text>
+            <text fill="var(--ink2)" font-family="var(--mono)" font-size="1vw" x="76%" y="73%">fa0</text>
+          </svg>
+
+          <div
+            style="display:grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2vw; width:100%; height:100%; position:relative; z-index:1; align-items:center; justify-items:center;">
+            <!-- Server -->
+            <div
+              style="grid-column:1; grid-row:1 / span 2; display:flex; flex-direction:column; align-items:center; gap:1vh;">
+              <img alt="Ubuntu Server"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3y6HxtDwRN6RcaMmzY1a5yFp33tz_Oi3A6HIgsIMD62udn4lirPTrNXpykt7PQ0bvEhJf8byjEkus8IBQVq-7fcFVNwvbPNuJKu55QuXTFK-eNvuagp5ulK2M5aXHfLlZ72eETTMDFXK16FxxnCu6tIXPJK1n9pwv21idxMiTiHeUpMF8RdO_Fff__LBAdYK4SmSw0uzfmBJgUORvo7pdkqS_3vhiNBPhWDZAkYbu_irA8x-MIJ0q6ilpZ9no_Unxltq0hVotGRw"
+                style="width:6vw; height:auto; filter:drop-shadow(3px 3px 0 var(--border));">
+              <div class="box"
+                style="padding:1.5vh 1.5vw; text-align:center; background:rgba(255,255,255,0.95); backdrop-filter:blur(4px); min-width:13vw;">
+                <div class="t-h3" style="font-size:0.9vw; margin-bottom:0.2vh; text-transform:uppercase;">Ubuntu Server
+                </div>
+                <p class="t-mono" style="font-size:0.75vw; color:var(--blue); margin-bottom:0.8vh;">192.168.100.10</p>
+                <div
+                  style="border-top:1px solid var(--border); padding-top:1vh; text-align:left; font-size:0.75vw; color:var(--ink2); display:flex; flex-direction:column; gap:0.6vh;">
+                  <div style="display:flex; align-items:center; gap:0.5vw;"><span class="material-symbols-outlined"
+                      style="font-size:1vw;">lan</span> Pto 52222</div>
+                  <div style="display:flex; align-items:center; gap:0.5vw;"><span class="material-symbols-outlined"
+                      style="font-size:1vw;">security</span> PAM Activo</div>
+                  <div style="display:flex; align-items:center; gap:0.5vw;"><span class="material-symbols-outlined"
+                      style="font-size:1vw;">block</span> Fail2Ban</div>
+                  <div style="display:flex; align-items:center; gap:0.5vw;"><span class="material-symbols-outlined"
+                      style="font-size:1vw;">schedule</span> Chrony</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Switch -->
+            <div
+              style="grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column; align-items:center; gap:1vh;">
+              <img alt="Virtual Switch"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWqHOjXJSobU9WHPwGIcYEFSiFBr64L8jaL3jhZuOAn6PjtTIwgO0TGR85KPoooiZ9tNK44zbrF-LisP2XMz0BD6OobyYDIV3agnq5Tz6e7Xtv7i2oF5CttCh9R1vNSqdTzXu3jQHY71Sbiff-7ojCbqszyCtqJPxVje1e3h7iJJC6EeRn9APcaZfkNtxn1HkH8MiVLwVltkuZH23MIz5a4aojwZmTarDsUEawLfF6EcSLS3Ccjl3TGYSajnYbvce1EldIQlMOhC4"
+                style="width:9vw; height:auto; filter:drop-shadow(3px 3px 0 var(--border));">
+              <div class="box"
+                style="padding:1vh 1.5vw; text-align:center; background:rgba(255,255,255,0.95); backdrop-filter:blur(4px); border-style:dashed;">
+                <div class="t-mono" style="font-size:0.8vw; font-weight:700; color:var(--ink);">VIRTUAL SWITCH</div>
+                <p style="font-size:0.7vw; color:var(--ink2); margin-top:0.4vh;">NAT CONFIGURATION</p>
+                <p style="font-size:0.7vw; font-weight:700;">192.168.100.0/24</p>
+              </div>
+            </div>
+
+            <!-- Windows 10 -->
+            <div
+              style="grid-column:3; grid-row:1; display:flex; flex-direction:column; align-items:center; gap:1vh; transform:translateX(2vw);">
+              <img alt="Windows 10 PC"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXw8wzk6JLOv8MAsGn1OsYnWZkhKkJ0I06W7WnvR_HU7uL70XR2obHepwVEGjkP-FHizISiu2cW0JAverz9k04_34dcKD6-63YQFzIs2yIg4cMKN0C6GHAJz4BOYQimTw7dYKe6lEOoge8NjtV7P1vS6ZfhPp5vSnnjmXZ5hg2B9Bb2ke7DmkD5hPxg7vDoQ7ugzP-6_Q4L3HCy831KCgUDwaKOugpiH8Ol3Ng7UHl0zbSMCXaX-dURruEujYs_doPL7TBpWFtpFs"
+                style="width:7vw; height:auto; filter:drop-shadow(3px 3px 0 var(--green));">
+              <div class="box box-green"
+                style="padding:1vh 1vw; text-align:center; background:rgba(255,255,255,0.95); backdrop-filter:blur(4px); border-color:var(--green); min-width:12vw;">
+                <div class="t-h3 t-green" style="font-size:0.9vw; margin-bottom:0.2vh;">Windows 10</div>
+                <p class="t-mono" style="font-size:0.75vw; color:var(--blue); margin-bottom:0.5vh;">192.168.100.20</p>
+                <p style="font-size:0.7vw; color:var(--ink2); line-height:1.2;">Técnico legítimo<br>Proton Auth</p>
+              </div>
+            </div>
+
+            <!-- Lubuntu -->
+            <div style="grid-column:3; grid-row:2; display:flex; flex-direction:column; align-items:center; gap:1vh;">
+              <img alt="Lubuntu PC"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXw8wzk6JLOv8MAsGn1OsYnWZkhKkJ0I06W7WnvR_HU7uL70XR2obHepwVEGjkP-FHizISiu2cW0JAverz9k04_34dcKD6-63YQFzIs2yIg4cMKN0C6GHAJz4BOYQimTw7dYKe6lEOoge8NjtV7P1vS6ZfhPp5vSnnjmXZ5hg2B9Bb2ke7DmkD5hPxg7vDoQ7ugzP-6_Q4L3HCy831KCgUDwaKOugpiH8Ol3Ng7UHl0zbSMCXaX-dURruEujYs_doPL7TBpWFtpFs"
+                style="width:7vw; height:auto; filter:sepia(1) saturate(5) hue-rotate(-50deg) drop-shadow(3px 3px 0 var(--red)); opacity:0.7;">
+              <div class="box box-red"
+                style="padding:1vh 1vw; text-align:center; background:rgba(255,255,255,0.95); backdrop-filter:blur(4px); border-color:var(--red); min-width:12vw;">
+                <div class="t-h3 t-red" style="font-size:0.9vw; margin-bottom:0.2vh;">Lubuntu</div>
+                <p class="t-mono" style="font-size:0.75vw; color:var(--blue); margin-bottom:0.5vh;">192.168.100.30</p>
+                <p style="font-size:0.7vw; color:var(--red); line-height:1.2; font-weight:600;">Atacante
+                  hostil<br>Fuerza Bruta SSH</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 10 · DEMO 1 – ATAQUE
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Demo 1 · El Ataque y la Respuesta de Fail2Ban</div>
+        <div class="g2" style="flex:1;" data-a data-d="2">
+          <div style="display:flex; flex-direction:column;">
+            <div class="t-h3 t-red t-center" style="margin-bottom:1vh;">Atacante (Lubuntu .30)</div>
+            <div class="term" style="flex:1;">
+              <div class="term-hdr"><span class="term-dot"></span><span class="term-dot"></span><span
+                  class="term-dot"></span></div>
+              tecno@lubuntu:~$ ssh adrian@192.168.100.10 -p 52222<br>
+              Password:<br>Verification code:<br>
+              Password:<br>Verification code:<br>
+              Password:<br>Verification code:<br>
+              <span class="t-red">Permission denied (keyboard-interactive).</span><br><br>
+              tecno@lubuntu:~$ ssh adrian@192.168.100.10 -p 52222<br>
+              <span class="t-red t-bold">ssh: connect to host 192.168.100.10 port 52222: Connection refused</span>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column;">
+            <div class="t-h3 t-blue t-center" style="margin-bottom:1vh;">Respuesta del Servidor</div>
+            <div class="term" style="flex:1;">
+              <div class="term-hdr"><span class="term-dot"></span><span class="term-dot"></span><span
+                  class="term-dot"></span></div>
+              root@TecnoServicios:~$ sudo fail2ban-client status sshd<br><br>
+              Status for the jail: sshd<br>
+              |- Filter<br>
+              |&nbsp;&nbsp;|- Currently failed: 0<br>
+              |&nbsp;&nbsp;`- Total failed:&nbsp;&nbsp;&nbsp;&nbsp;3<br>
+              `- Actions<br>
+              &nbsp;&nbsp;&nbsp;|- Currently banned: 1<br>
+              &nbsp;&nbsp;&nbsp;|- Total banned:&nbsp;&nbsp;&nbsp;&nbsp;1<br>
+              &nbsp;&nbsp;&nbsp;`- Banned IP list:&nbsp;&nbsp;<span class="t-red t-bold">192.168.100.30</span>
+            </div>
+          </div>
+        </div>
+        <div class="box" data-a data-d="3" style="margin-top:2vh; border-left:5px solid var(--red);">
+          <p class="t-body" style="margin:0;"><strong>Resultado:</strong> Tras 3 fallos consecutivos, Fail2Ban añade
+            automáticamente una regla en UFW que bloquea (DROP) toda conexión desde la IP .30 durante 24 horas.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 11 · DEMO 2 – ACCESO LEGÍTIMO
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Demo 2 · Acceso Legítimo con MFA</div>
+        <div class="g2" style="flex:1;" data-a data-d="2">
+          <div style="display:flex; flex-direction:column;">
+            <div class="t-h3 t-green t-center" style="margin-bottom:1vh;">Técnico Legítimo (Windows .20)</div>
+            <div class="term term-dark" style="flex:1;">
+              <div class="term-hdr"><span class="term-dot"></span><span class="term-dot"></span><span
+                  class="term-dot"></span></div>
+              PS C:\Users\Tecnico> ssh adrian@192.168.100.10 -p 52222<br><br>
+              Password: <span style="opacity:.5;">[oculto]</span><br>
+              Verification code: <span class="t-green t-bold">783012</span><br>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column;">
+            <div class="t-h3 t-blue t-center" style="margin-bottom:1vh;">Sesión Establecida</div>
+            <div class="term" style="flex:1; border-color:var(--green); border-width:3px;">
+              <div class="term-hdr"><span class="term-dot"></span><span class="term-dot"></span><span
+                  class="term-dot"></span></div>
+              Welcome to Ubuntu 24.04.4 LTS<br><br>
+              System information as of Thu Jun 12 09:31:22 UTC 2026<br><br>
+              &nbsp;&nbsp;System load:&nbsp;&nbsp;0.0<br>
+              &nbsp;&nbsp;Usage of /:&nbsp;&nbsp;&nbsp;24.1% of 24.52GB<br>
+              &nbsp;&nbsp;IPv4 address: 192.168.100.10<br><br>
+              Last login: Thu Jun 11 from 192.168.100.20<br>
+              <span class="t-green t-bold">adrian@TecnoServicios:~$</span> █
+            </div>
+          </div>
+        </div>
+        <div class="box" data-a data-d="3" style="margin-top:2vh; border-left:5px solid var(--green);">
+          <p class="t-body" style="margin:0;"><strong>Resultado:</strong> El técnico introduce su contraseña y el código
+            TOTP de 6 dígitos generado en Proton Authenticator. Solo son 6 números adicionales; el flujo de trabajo no
+            se interrumpe.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 12 · PRESUPUESTO ECONÓMICO
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Presupuesto Económico</div>
+        
+        <div class="g2" style="flex:1; align-items:stretch;" data-a data-d="2">
+          
+          <!-- Costes de Software -->
+          <div class="box" style="display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+              <div class="t-h3" style="margin:0; color:var(--ink); font-size:1.8vw;">Costes de Software</div>
+              <div style="background:rgba(41,128,185,.1); border:1px solid var(--blue); padding:0.4vh 0.8vw; border-radius:3px; display:flex; align-items:center; gap:0.5vw; color:var(--blue); font-family:var(--mono); font-size:0.8vw; font-weight:700;">
+                <span class="material-symbols-outlined" style="font-size:1vw;">code</span>OPEN SOURCE
+              </div>
+            </div>
+            
+            <table style="width:100%; border-collapse:collapse; text-align:left;">
+              <thead>
+                <tr>
+                  <th style="padding:1vh 1vw; border-bottom:1px solid var(--border); font-family:var(--mono); font-size:0.8vw; color:var(--ink2); text-transform:uppercase;">Concepto</th>
+                  <th style="padding:1vh 1vw; border-bottom:1px solid var(--border); font-family:var(--mono); font-size:0.8vw; color:var(--ink2); text-transform:uppercase;">Descripción</th>
+                  <th style="padding:1vh 1vw; border-bottom:1px solid var(--border); font-family:var(--mono); font-size:0.8vw; color:var(--ink2); text-transform:uppercase; text-align:right;">Coste</th>
+                </tr>
+              </thead>
+              <tbody style="font-size:1vw;">
+                <tr>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); font-weight:700;">VirtualBox</td>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); color:var(--ink2);">Hipervisor de código abierto</td>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); text-align:right; font-family:var(--mono); font-weight:700; color:var(--blue);">0 EUR</td>
+                </tr>
+                <tr>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); font-weight:700;">Ubuntu Server</td>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); color:var(--ink2);">Sistema operativo servidor libre</td>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); text-align:right; font-family:var(--mono); font-weight:700; color:var(--blue);">0 EUR</td>
+                </tr>
+                <tr>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); font-weight:700;">OpenSSH, Fail2Ban, Chrony</td>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); color:var(--ink2);">Software de red y seguridad de código abierto</td>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); text-align:right; font-family:var(--mono); font-weight:700; color:var(--blue);">0 EUR</td>
+                </tr>
+                <tr>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); font-weight:700;">libpam-google-authenticator</td>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); color:var(--ink2);">Módulo de autenticación (PAM) libre</td>
+                  <td style="padding:1.5vh 1vw; border-bottom:1px solid var(--grid-thin); text-align:right; font-family:var(--mono); font-weight:700; color:var(--blue);">0 EUR</td>
+                </tr>
+                <tr>
+                  <td style="padding:1.5vh 1vw; font-weight:700;">Proton authenticator</td>
+                  <td style="padding:1.5vh 1vw; color:var(--ink2);">App móvil de doble factor de código abierto</td>
+                  <td style="padding:1.5vh 1vw; text-align:right; font-family:var(--mono); font-weight:700; color:var(--blue);">0 EUR</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Costes de Personal y Resumen -->
+          <div style="display:flex; flex-direction:column; gap:2vh;">
+            
+            <div class="box" style="display:flex; flex-direction:column; flex:1;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+                <div class="t-h3" style="margin:0; color:var(--ink); font-size:1.8vw;">Costes de Personal</div>
+                <div style="background:var(--grid-thin); border:1px solid var(--border); padding:0.4vh 0.8vw; border-radius:3px; display:flex; align-items:center; gap:0.5vw; color:var(--ink); font-family:var(--mono); font-size:0.8vw; font-weight:700;">
+                  <span class="material-symbols-outlined" style="font-size:1vw;">schedule</span>IMPLEMENTACIÓN
+                </div>
+              </div>
+
+              <table style="width:100%; border-collapse:collapse; text-align:left; margin-bottom:auto;">
+                <thead>
+                  <tr>
+                    <th style="padding:1vh 1vw; border-bottom:1px solid var(--border); font-family:var(--mono); font-size:0.8vw; color:var(--ink2); text-transform:uppercase;">Concepto</th>
+                    <th style="padding:1vh 1vw; border-bottom:1px solid var(--border); font-family:var(--mono); font-size:0.8vw; color:var(--ink2); text-transform:uppercase;">Descripción</th>
+                    <th style="padding:1vh 1vw; border-bottom:1px solid var(--border); font-family:var(--mono); font-size:0.8vw; color:var(--ink2); text-transform:uppercase; text-align:right;">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody style="font-size:1vw;">
+                  <tr>
+                    <td style="padding:1.5vh 1vw; font-weight:700;">Horas equipo técnico</td>
+                    <td style="padding:1.5vh 1vw; color:var(--ink2);">
+                      Trabajo de diseño, implementación y documentación<br>
+                      <span style="font-family:var(--mono); font-size:0.85vw; color:var(--ink2); opacity:0.8; margin-top:0.5vh; display:block;">(3 x 20h x 15 EUR/h)</span>
+                    </td>
+                    <td style="padding:1.5vh 1vw; text-align:right; font-family:var(--mono); font-weight:700;">900 EUR</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div style="background:var(--ink); color:#fff; padding:2vh 2vw; display:flex; justify-content:space-between; align-items:center; border:1px solid var(--ink); margin-top:2vh;">
+                <span style="font-size:1.6vw; font-weight:700;">Total</span>
+                <span style="font-family:var(--mono); font-size:2.2vw; font-weight:800; color:#89ceff;">900 EUR</span>
+              </div>
+            </div>
+
+            <!-- Resumen -->
+            <div class="box" style="border-left:5px solid var(--blue); background:rgba(41,128,185,.05); border-top:2px dashed var(--border); border-right:2px dashed var(--border); border-bottom:2px dashed var(--border);">
+              <div style="display:flex; gap:1vw;">
+                <span class="material-symbols-outlined t-blue" style="font-size:2vw; flex-shrink:0;">info</span>
+                <p class="t-body" style="margin:0; font-size:1.05vw; color:var(--ink2); line-height:1.6;">
+                  Este presupuesto tiene coste cero en licencias de software, al estar basada íntegramente en herramientas de código abierto. El único coste real corresponde al tiempo de los técnicos encargados de la implementación y documentación del sistema.
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 13 · METODOLOGÍA DE TRABAJO
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Metodología de Trabajo</div>
+        
+        <div class="g2" style="flex:1; align-items:stretch;" data-a data-d="2">
+          
+          <!-- Columna Izquierda: Metodología SCRUM -->
+          <div class="box" style="display:flex; flex-direction:column; padding:2vh 1.5vw;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+              <div class="t-h3" style="margin:0; color:var(--ink); font-size:1.8vw;">Metodología SCRUM</div>
+              <div style="background:rgba(41,128,185,.1); border:1px solid var(--blue); padding:0.4vh 0.8vw; border-radius:3px; display:flex; align-items:center; gap:0.5vw; color:var(--blue); font-family:var(--mono); font-size:0.8vw; font-weight:700;">
+                <span class="material-symbols-outlined" style="font-size:1vw;">sync</span>ÁGIL
+              </div>
+            </div>
+            
+            <div style="flex-grow:1; display:flex; flex-direction:column; min-height:0;">
+              <p class="t-body" style="color:var(--ink2); line-height:1.6; margin-bottom:2vh;">
+                El proyecto se ha desarrollado siguiendo la metodología SCRUM, dividiendo el flujo de trabajo en Sprints. La gestión de tareas se ha centralizado visualmente mediante tableros de Trello, controlando el progreso desde el 'Product backlog' hasta la columna de tareas 'Finalizadas'.
+              </p>
+              
+              <div style="border:1px solid var(--border); padding:1.5vh 1.5vw; border-radius:4px; flex-grow:1; display:flex; flex-direction:column; min-height:0;">
+                <div style="display:flex; align-items:center; gap:0.8vw; margin-bottom:1vh;">
+                  <span class="material-symbols-outlined t-blue" style="font-size:1.8vw;">view_kanban</span>
+                  <span style="font-weight:700; color:var(--ink); font-size:1.2vw;">Tablero Trello</span>
+                </div>
+                <div style="border:1px solid var(--border); border-radius:4px; overflow:hidden; display:flex; justify-content:center; align-items:center; flex-grow:1; background:var(--grid-thin); min-height:0;">
+                  <img alt="Tablero Trello Screenshot" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxyym5WVX1UrCSVvBEEu4SRtDsWlGqjbN_mExpf5nxH6r9ZEQt096B0iGzMrAOoKARcCevoTSztuGVc5HU1MWIuR4uOvQxh1KiLrZiruQ_7QRvSmTnrkvz5TkVF0EMeyNv42h2w0k1MxkqegSmxOZMcb39lP4cnrkN_zQ2B_Bd7IWnEyz2MlG5AAnja2E_jgue4KeZFKGKsUzzQzZLxEnKq_l7MxL_xoo3oJ9ykOxuZ6caR272380M6Yt_lRrpO7EA8swFGC4d6NU" style="max-width:100%; max-height:42vh; object-fit:contain;" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Coordinación -->
+          <div style="display:flex; flex-direction:column; gap:2vh;">
+            
+            <div class="box" style="border-left:5px solid var(--blue); background:rgba(41,128,185,.05); border-top:2px dashed var(--border); border-right:2px dashed var(--border); border-bottom:2px dashed var(--border);">
+              <div style="display:flex; gap:1vw;">
+                <span class="material-symbols-outlined t-blue" style="font-size:2vw; flex-shrink:0;">verified</span>
+                <p class="t-body" style="margin:0; font-size:1.05vw; color:var(--ink2); line-height:1.6;">
+                  La combinación de estas herramientas garantiza una trazabilidad total de las decisiones tomadas y una respuesta ágil ante cualquier imprevisto durante el ciclo de vida del proyecto.
+                </p>
+              </div>
+            </div>
+
+            <div class="box" style="display:flex; flex-direction:column; flex:1;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2vh;">
+                <div class="t-h3" style="margin:0; color:var(--ink); font-size:1.8vw;">Herramientas de Coordinación</div>
+                <div style="background:var(--grid-thin); border:1px solid var(--border); padding:0.4vh 0.8vw; border-radius:3px; display:flex; align-items:center; gap:0.5vw; color:var(--ink); font-family:var(--mono); font-size:0.8vw; font-weight:700;">
+                  <span class="material-symbols-outlined" style="font-size:1vw;">handshake</span>COORDINACIÓN
+                </div>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:1.5vh; flex-grow:1;">
+                
+                <!-- Discord -->
+                <div style="display:flex; align-items:flex-start; gap:1.5vw; padding:1.5vh 1.5vw; border:1px solid var(--border); border-radius:4px;">
+                  <div style="width:4vw; height:4vw; flex-shrink:0; background:var(--grid-thin); border:1px solid var(--border); border-radius:4px; padding:0.8vw; display:flex; align-items:center; justify-content:center;">
+                    <img alt="Discord" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRVc-DI2k9OjvB2CAD7H6yB0v77X2yxNmrinT2VB95ALwRwCr0HgNDcNSUEDjBDosNKnEZBXL5GnyPl3bUc0H_3cBa_xZh0PKbTmXJjRVO_CthhVYmUrYkobAlA2bD7uj6ezp_VxdTAAmtRUZ0B3OLg40P7jCw6biB-Gv2cXbuArtIi0fBBQ9y2fzfm92-eG26LC83aaS3PfoLJOf-fX-AB0nSMKv6qpPbrj2Kn--mF9USFvGoy_peXtYaTKXo3cvc3g7TjMd0xI8" style="width:100%; height:100%; object-fit:contain;" />
+                  </div>
+                  <div>
+                    <div style="font-weight:700; color:var(--ink); font-size:1.2vw; margin-bottom:0.5vh;">Discord</div>
+                    <div style="color:var(--ink2); font-size:0.9vw; line-height:1.6;">Canal de comunicación y colaboración principal. Reuniones de voz, pantalla compartida para depuración en tiempo real y pair-programming.</div>
+                  </div>
+                </div>
+
+                <!-- WhatsApp -->
+                <div style="display:flex; align-items:flex-start; gap:1.5vw; padding:1.5vh 1.5vw; border:1px solid var(--border); border-radius:4px;">
+                  <div style="width:4vw; height:4vw; flex-shrink:0; background:var(--grid-thin); border:1px solid var(--border); border-radius:4px; padding:0.8vw; display:flex; align-items:center; justify-content:center;">
+                    <img alt="WhatsApp" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAENVOdmCRzuWzeSupxbKZgtkPmvUwIc2MOF4ui_WeI7jcb4mt84tOzZ5hb-z-9alZ-bvsGf94Y_AXlhKxJcxIRryFFMToWOZaMC6neXQ9sa791v-YqogFO1d-cARSkrSmLrfKKoMzp0Lm2fPDe_g5rPXMrQd3w1CrHUPFEhetz1zc9CPZmCMxoM6sBV4wB9-drOVGZw-OhDU8l2Gj4h5QDLWfCHkcXm7NGiIImRB-7rjrSFZsrdTsY64mtSS_MsA4dJoCVgS0vGMA" style="width:100%; height:100%; object-fit:contain;" />
+                  </div>
+                  <div>
+                    <div style="font-weight:700; color:var(--ink); font-size:1.2vw; margin-bottom:0.5vh;">WhatsApp</div>
+                    <div style="color:var(--ink2); font-size:0.9vw; line-height:1.6;">Utilizado para la comunicación fluida de actualizaciones críticas del proyecto, incluyendo cambios en el tablero de Trello, sincronización de documentación y alertas de progreso en tiempo real para el equipo.</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 14 · IDENTIFICACIÓN DE RIESGOS Y PREVENCIÓN
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Identificación de Riesgos y Plan de Prevención</div>
+        
+        <div data-a data-d="2" style="margin-bottom:2vh;">
+          <p class="t-body" style="color:var(--ink2); max-width:80%;">Análisis estructurado de vulnerabilidades operativas y contramedidas técnicas correspondientes para asegurar la integridad y disponibilidad del sistema.</p>
+        </div>
+
+        <div class="box" style="flex:1; padding:0; overflow:hidden; display:flex; flex-direction:column;" data-a data-d="3">
+          <table style="width:100%; border-collapse:collapse; text-align:left; flex:1;">
+            <thead>
+              <tr style="background:var(--grid-thin); border-bottom:2px solid var(--border);">
+                <th style="padding:2.5vh 1.5vw; width:25%;">
+                  <div style="display:flex; align-items:center; gap:0.5vw; color:var(--ink); font-family:var(--mono); font-size:1vw; font-weight:700; text-transform:uppercase;">
+                    <span class="material-symbols-outlined" style="font-size:1.5vw;">task_alt</span> Actividad
+                  </div>
+                </th>
+                <th style="padding:2.5vh 1.5vw; width:30%; border-left:1px solid var(--border);">
+                  <div style="display:flex; align-items:center; gap:0.5vw; color:var(--red); font-family:var(--mono); font-size:1vw; font-weight:700; text-transform:uppercase;">
+                    <span class="material-symbols-outlined" style="font-size:1.5vw;">warning</span> Riesgo Identificado
+                  </div>
+                </th>
+                <th style="padding:2.5vh 1.5vw; width:45%; border-left:1px solid var(--border);">
+                  <div style="display:flex; align-items:center; gap:0.5vw; color:var(--blue); font-family:var(--mono); font-size:1vw; font-weight:700; text-transform:uppercase;">
+                    <span class="material-symbols-outlined" style="font-size:1.5vw;">shield</span> Medida Preventiva
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Row 1 -->
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; font-weight:700; border-left:none;">Trabajo prolongado con pantallas</td>
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; color:var(--ink2); border-left:1px solid var(--border);">Fatiga visual y postural</td>
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; border-left:1px solid var(--border);">Pausas de 10 min cada hora, pantalla a altura correcta</td>
+              </tr>
+              <!-- Row 2 -->
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; border-left:none;">
+                  <div style="font-weight:700; margin-bottom:0.5vh;">Configuración de ficheros críticos</div>
+                  <span style="font-family:var(--mono); font-size:0.9vw; background:rgba(0,0,0,0.05); padding:0.3vh 0.6vw; border-radius:3px; color:var(--ink2);">sshd_config, PAM</span>
+                </td>
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; color:var(--ink2); border-left:1px solid var(--border);">Bloqueo total del acceso al servidor por error humano</td>
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; border-left:1px solid var(--border);">Mantener una sesión local abierta antes de reiniciar el servicio SSH y hacer copias de seguridad (Snapshots) de la VM</td>
+              </tr>
+              <!-- Row 3 -->
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; font-weight:700; border-left:none;">Gestión de credenciales MFA</td>
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; color:var(--ink2); border-left:1px solid var(--border);">Exposición de la contraseña o pérdida del dispositivo móvil</td>
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; border-left:1px solid var(--border);">Establecer políticas de contraseñas robustas y guardar en un entorno seguro los códigos de recuperación generados por PAM.</td>
+              </tr>
+              <!-- Row 4 -->
+              <tr>
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; font-weight:700; border-left:none;">Ejecución del entorno de pruebas</td>
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; color:var(--ink2); border-left:1px solid var(--border);">Sobrecarga de recursos (RAM/CPU) en el equipo físico anfitrión</td>
+                <td style="padding:2.5vh 1.5vw; font-size:1.15vw; border-left:1px solid var(--border);">Asignar recursos limitados a la VM en VirtualBox y cerrar aplicaciones en segundo plano con alto consumo durante el trabajo</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 15 · CONCLUSIONES Y RECOMENDACIONES
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Conclusiones y Recomendaciones</div>
+        <div class="g2" style="flex:1; align-items:stretch;">
+          
+          <!-- Panel Izquierdo: Conclusiones -->
+          <div class="box" style="display:flex; flex-direction:column; padding:3vh 2.5vw;" data-a data-d="2">
+            <div style="display:flex; align-items:center; gap:1vw; margin-bottom:3vh; border-bottom:1px solid var(--border); padding-bottom:1.5vh;">
+              <span class="material-symbols-outlined t-blue" style="font-size:2.5vw;">verified</span>
+              <h2 class="t-h3" style="margin:0; font-size:1.8vw; color:var(--ink);">Conclusiones</h2>
+            </div>
+            <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:1.5vh; flex-grow:1;">
+              
+              <!-- Item 1 -->
+              <li style="display:flex; gap:1vw; padding:1.5vh 1.5vw; border:1px solid var(--border); border-radius:4px; background:var(--bg); transition:transform 0.2s, box-shadow 0.2s;">
+                <span class="material-symbols-outlined t-blue" style="font-size:1.8vw; flex-shrink:0;">security</span>
+                <div>
+                  <strong style="display:block; font-size:1.15vw; color:var(--ink); margin-bottom:0.5vh;">Seguridad Robusta</strong>
+                  <p class="t-small" style="margin:0; color:var(--ink2);">Eliminación total de ataques de fuerza bruta mediante 2FA (<span style="font-family:var(--mono); background:rgba(0,0,0,0.05); padding:0.2vh 0.4vw; border-radius:3px; border:1px solid var(--grid-thick);">Proton Authenticator</span>) y cambio de puerto.</p>
+                </div>
+              </li>
+
+              <!-- Item 2 -->
+              <li style="display:flex; gap:1vw; padding:1.5vh 1.5vw; border:1px solid var(--border); border-radius:4px; background:var(--bg); transition:transform 0.2s, box-shadow 0.2s;">
+                <span class="material-symbols-outlined t-blue" style="font-size:1.8vw; flex-shrink:0;">money_off</span>
+                <div>
+                  <strong style="display:block; font-size:1.15vw; color:var(--ink); margin-bottom:0.5vh;">Coste Cero</strong>
+                  <p class="t-small" style="margin:0; color:var(--ink2);">Implementación exitosa basada íntegramente en herramientas Open Source, eliminando gastos de licencias.</p>
+                </div>
+              </li>
+
+              <!-- Item 3 -->
+              <li style="display:flex; gap:1vw; padding:1.5vh 1.5vw; border:1px solid var(--border); border-radius:4px; background:var(--bg); transition:transform 0.2s, box-shadow 0.2s;">
+                <span class="material-symbols-outlined t-blue" style="font-size:1.8vw; flex-shrink:0;">shield_locked</span>
+                <div>
+                  <strong style="display:block; font-size:1.15vw; color:var(--ink); margin-bottom:0.5vh;">Protección Activa</strong>
+                  <p class="t-small" style="margin:0; color:var(--ink2);"><span style="font-family:var(--mono); background:rgba(0,0,0,0.05); padding:0.2vh 0.4vw; border-radius:3px; border:1px solid var(--grid-thick);">Fail2Ban</span> y <span style="font-family:var(--mono); background:rgba(0,0,0,0.05); padding:0.2vh 0.4vw; border-radius:3px; border:1px solid var(--grid-thick);">UFW</span> garantizan una defensa perimetral dinámica capaz de banear IPs maliciosas automáticamente.</p>
+                </div>
+              </li>
+
+              <!-- Item 4 -->
+              <li style="display:flex; gap:1vw; padding:1.5vh 1.5vw; border:1px solid var(--border); border-radius:4px; background:var(--bg); transition:transform 0.2s, box-shadow 0.2s;">
+                <span class="material-symbols-outlined t-blue" style="font-size:1.8vw; flex-shrink:0;">account_tree</span>
+                <div>
+                  <strong style="display:block; font-size:1.15vw; color:var(--ink); margin-bottom:0.5vh;">Metodología y Replicabilidad</strong>
+                  <p class="t-small" style="margin:0; color:var(--ink2);">El uso de <span style="font-family:var(--mono); background:rgba(0,0,0,0.05); padding:0.2vh 0.4vw; border-radius:3px; border:1px solid var(--grid-thick);">SCRUM</span> permitió decisiones críticas a tiempo (Hardening en Sprint 7) y una documentación reproducible paso a paso.</p>
+                </div>
+              </li>
+              
+            </ul>
+          </div>
+
+          <!-- Panel Derecho: Recomendaciones -->
+          <div class="box box-accent" style="display:flex; flex-direction:column; padding:3vh 2.5vw;" data-a data-d="3">
+            <div style="display:flex; align-items:center; gap:1vw; margin-bottom:3vh; border-bottom:1px solid var(--border); padding-bottom:1.5vh;">
+              <span class="material-symbols-outlined t-blue" style="font-size:2.5vw;">insights</span>
+              <h2 class="t-h3" style="margin:0; font-size:1.8vw; color:var(--ink);">Recomendaciones</h2>
+            </div>
+            <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:1.5vh; flex-grow:1;">
+              
+              <!-- Item 1 -->
+              <li style="display:flex; gap:1vw; padding:1.5vh 1.5vw; border:1px solid var(--border); border-left:4px solid var(--blue); border-radius:4px; background:var(--bg); transition:transform 0.2s, box-shadow 0.2s;">
+                <span class="material-symbols-outlined t-blue" style="font-size:1.8vw; flex-shrink:0;">deployed_code</span>
+                <div>
+                  <strong style="display:block; font-size:1.15vw; color:var(--ink); margin-bottom:0.5vh;">Automatización (<span class="t-blue" style="font-family:var(--mono);">Ansible</span>)</strong>
+                  <p class="t-small" style="margin:0; color:var(--ink2);">Implementar herramientas de IaC para desplegar el hardening de SSH y Fail2Ban de forma masiva y rápida.</p>
+                </div>
+              </li>
+
+              <!-- Item 2 -->
+              <li style="display:flex; gap:1vw; padding:1.5vh 1.5vw; border:1px solid var(--border); border-left:4px solid var(--blue); border-radius:4px; background:var(--bg); transition:transform 0.2s, box-shadow 0.2s;">
+                <span class="material-symbols-outlined t-blue" style="font-size:1.8vw; flex-shrink:0;">monitoring</span>
+                <div>
+                  <strong style="display:block; font-size:1.15vw; color:var(--ink); margin-bottom:0.5vh;">Monitorización Gráfica (<span class="t-blue" style="font-family:var(--mono);">Grafana + Prometheus</span>)</strong>
+                  <p class="t-small" style="margin:0; color:var(--ink2);">Visualizar en tiempo real los intentos de conexión y bloqueos por zona geográfica.</p>
+                </div>
+              </li>
+
+              <!-- Item 3 -->
+              <li style="display:flex; gap:1vw; padding:1.5vh 1.5vw; border:1px solid var(--border); border-left:4px solid var(--blue); border-radius:4px; background:var(--bg); transition:transform 0.2s, box-shadow 0.2s;">
+                <span class="material-symbols-outlined t-blue" style="font-size:1.8vw; flex-shrink:0;">badge</span>
+                <div>
+                  <strong style="display:block; font-size:1.15vw; color:var(--ink); margin-bottom:0.5vh;">Gestión de Identidades (<span class="t-blue" style="font-family:var(--mono);">OpenLDAP</span>)</strong>
+                  <p class="t-small" style="margin:0; color:var(--ink2);">Centralizar la autenticación a medida que crezca el equipo técnico para una administración más eficiente.</p>
+                </div>
+              </li>
+              
+            </ul>
+          </div>
+          
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 16 · FUENTES DE INFORMACIÓN
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct">
+        <div class="t-title" data-a data-d="1">Fuentes de Información</div>
+        
+        <div class="g2" style="flex:1; align-items:stretch;" data-a data-d="2">
+          
+          <!-- Columna Izquierda: Protocolos Principales y Seguridad -->
+          <div class="box" style="position:relative; display:flex; flex-direction:column; padding:3vh 2.5vw;">
+            <div style="position:absolute; top:0; right:0; padding:1vh 1vw; border-bottom:1px solid var(--border); border-left:1px solid var(--border); background:rgba(0,0,0,0.03); color:var(--ink2);">
+              <span class="material-symbols-outlined" style="font-size:1.2vw; display:block;">terminal</span>
+            </div>
+            
+            <h2 class="t-h3" style="display:flex; align-items:center; gap:1vw; border-bottom:1px solid var(--border); padding-bottom:1.5vh; margin-bottom:2vh;">
+              <span class="material-symbols-outlined t-blue" style="font-size:2vw;">security</span>
+              <span style="font-size:1.4vw; color:var(--ink); margin:0;">Protocolos Principales y Seguridad</span>
+            </h2>
+            
+            <div style="flex-grow:1; overflow:hidden;">
+              <table class="tbl" style="width:100%;">
+                <thead>
+                  <tr>
+                    <th style="width:25%; font-family:var(--mono); font-size:0.8vw; text-transform:uppercase;">Categoría</th>
+                    <th style="width:35%; font-family:var(--mono); font-size:0.8vw; text-transform:uppercase;">Recurso</th>
+                    <th style="width:40%; font-family:var(--mono); font-size:0.8vw; text-transform:uppercase;">Enlace/Uso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="font-weight:700; color:var(--ink); font-size:1vw; vertical-align:top; padding-top:1.5vh;">OpenSSH &amp; PAM</td>
+                    <td style="vertical-align:top; padding-top:1.5vh;">
+                      <ul style="margin:0; padding-left:1.2vw; font-size:1vw; color:var(--ink2); line-height:1.5;">
+                        <li>Manual oficial de OpenSSH</li>
+                        <li>Repo de google-authenticator-libpam</li>
+                        <li>Manual de PAM Linux</li>
+                      </ul>
+                    </td>
+                    <td style="vertical-align:top; padding-top:1.5vh; font-family:var(--mono); font-size:0.85vw; color:var(--blue); word-break:break-all; line-height:1.5;">
+                      https://www.openssh.com/manual.html<br>github.com/google/google-authenticator-libpam<br>https://linux.die.net/man/8/pam
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-weight:700; color:var(--ink); font-size:1vw; vertical-align:top; padding-top:1.5vh;">Seguridad y Defensa</td>
+                    <td style="vertical-align:top; padding-top:1.5vh;">
+                      <ul style="margin:0; padding-left:1.2vw; font-size:1vw; color:var(--ink2); line-height:1.5;">
+                        <li>Wiki/manual de Fail2Ban</li>
+                        <li>Guía de la comunidad de UFW</li>
+                      </ul>
+                    </td>
+                    <td style="vertical-align:top; padding-top:1.5vh; font-family:var(--mono); font-size:0.85vw; color:var(--blue); word-break:break-all; line-height:1.5;">
+                      github.com/fail2ban/fail2ban/wiki<br>https://help.ubuntu.com/community/UFW
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-weight:700; color:var(--ink); font-size:1vw; vertical-align:top; padding-top:1.5vh;">Estándares y Protoc.</td>
+                    <td style="vertical-align:top; padding-top:1.5vh;">
+                      <ul style="margin:0; padding-left:1.2vw; font-size:1vw; color:var(--ink2); line-height:1.5;">
+                        <li>RFC 6238 (TOTP)</li>
+                        <li>RFC 4251 (Arquitectura SSH)</li>
+                        <li>RFC 5905 (NTP/Chrony)</li>
+                      </ul>
+                    </td>
+                    <td style="vertical-align:top; padding-top:1.5vh; font-family:var(--mono); font-size:0.85vw; color:var(--blue); word-break:break-all; line-height:1.5;">
+                      https://datatracker.ietf.org/doc/html/rfc6238<br>https://datatracker.ietf.org/doc/html/rfc4251<br>https://datatracker.ietf.org/doc/html/rfc5905
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Infraestructura y Operaciones -->
+          <div style="display:flex; flex-direction:column; gap:2vh;">
+            
+            <div class="box" style="position:relative; flex:1; display:flex; flex-direction:column; padding:3vh 2.5vw;">
+              <div style="position:absolute; top:0; right:0; padding:1vh 1vw; border-bottom:1px solid var(--border); border-left:1px solid var(--border); background:rgba(0,0,0,0.03); color:var(--ink2);">
+                <span class="material-symbols-outlined" style="font-size:1.2vw; display:block;">dns</span>
+              </div>
+              
+              <h2 class="t-h3" style="display:flex; align-items:center; gap:1vw; border-bottom:1px solid var(--border); padding-bottom:1.5vh; margin-bottom:2vh;">
+                <span class="material-symbols-outlined t-blue" style="font-size:2vw;">memory</span>
+                <span style="font-size:1.4vw; color:var(--ink); margin:0;">Infraestructura y Operaciones</span>
+              </h2>
+              
+              <div style="flex-grow:1; overflow:hidden;">
+                <table class="tbl" style="width:100%;">
+                  <thead>
+                    <tr>
+                      <th style="width:25%; font-family:var(--mono); font-size:0.8vw; text-transform:uppercase;">Categoría</th>
+                      <th style="width:35%; font-family:var(--mono); font-size:0.8vw; text-transform:uppercase;">Recurso</th>
+                      <th style="width:40%; font-family:var(--mono); font-size:0.8vw; text-transform:uppercase;">Enlace/Uso</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="font-weight:700; color:var(--ink); font-size:1vw; vertical-align:top; padding-top:1.5vh;">Infra. y Sincron.</td>
+                      <td style="vertical-align:top; padding-top:1.5vh;">
+                        <ul style="margin:0; padding-left:1.2vw; font-size:1vw; color:var(--ink2); line-height:1.5;">
+                          <li>Docs de Chrony</li>
+                          <li>Docs Ubuntu Server 24.04</li>
+                          <li>Manual VirtualBox</li>
+                          <li>Docs Netplan</li>
+                        </ul>
+                      </td>
+                      <td style="vertical-align:top; padding-top:1.5vh; font-family:var(--mono); font-size:0.85vw; color:var(--blue); word-break:break-all; line-height:1.5;">
+                        https://chrony-project.org/documentation.html<br>https://ubuntu.com/server/docs<br>https://www.virtualbox.org/manual<br>https://netplan.readthedocs.io/en/stable/
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="font-weight:700; color:var(--ink); font-size:1vw; vertical-align:top; padding-top:1.5vh;">Metodología</td>
+                      <td style="vertical-align:top; padding-top:1.5vh;">
+                        <ul style="margin:0; padding-left:1.2vw; font-size:1vw; color:var(--ink2); line-height:1.5;">
+                          <li>Guía de Scrum</li>
+                          <li>Trello</li>
+                        </ul>
+                      </td>
+                      <td style="vertical-align:top; padding-top:1.5vh; font-family:var(--mono); font-size:0.85vw; color:var(--blue); word-break:break-all; line-height:1.5;">
+                        scrumguides.org<br>trello.com/project-board
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="font-weight:700; color:var(--ink); font-size:1vw; vertical-align:top; padding-top:1.5vh;">Medios de Apoyo</td>
+                      <td style="vertical-align:top; padding-top:1.5vh;">
+                        <ul style="margin:0; padding-left:1.2vw; font-size:1vw; color:var(--ink2); line-height:1.5;">
+                          <li>Videos sobre TOTP</li>
+                          <li>Videos sobre Fail2Ban</li>
+                        </ul>
+                      </td>
+                      <td style="vertical-align:top; padding-top:1.5vh; font-family:var(--mono); font-size:0.85vw; color:var(--blue); word-break:break-all; line-height:1.5;">
+                        https://youtu.be/QNeJ4a7powo?si=hR1xadyMGktRtmiX<br>https://youtu.be/_bFjaff_YDk?si=3IIz3wDfm-4G4Xrn
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Mandate Block / AI Usage -->
+            <div style="border:1px dashed var(--border); background:rgba(41,128,185,.05); padding:1.5vh 1.5vw; display:flex; align-items:flex-start; gap:1vw;">
+              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1aDyBtzZrQ52MPyoBwSvcDoP51XypkqA9b9V12rx09lhi1-U1mwt5v8z26eaqRf1T_6G1H0z6lMAyWC4K_GWWoPpckwA1OrNOzhtu5P1rHZneUN_mi-AnZz6YYVOMhu-k3--k-3BAhf_A8t5jkThWHXJoWvM1p_qVm0KDp_jMfYNNIiawovrsutU7_OvwPB_mShYMHDQal3wnZ9L278cAUxHLQ6bHzhqery2rpV-VqsFgOGxVXW4zXfg-fTxVmfOs174wT7qY2to" alt="Gemini Logo" style="width:2.5vw; height:2.5vw; object-fit:contain; flex-shrink:0;">
+              <div>
+                <span style="font-family:var(--mono); font-size:1.1vw; font-weight:700; color:var(--ink); display:block; margin-bottom:0.5vh;">IA utilizada</span>
+                <p class="t-small" style="margin:0; color:var(--ink2); line-height:1.5;">Se ha utilizado Gemini 3.1 Pro y Gemini 3.5 Flash para la investigación técnica, optimización de comandos y parte de la redacción de la documentación del proyecto.</p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════
+     SLIDE 17 · TURNO DE PREGUNTAS
+     ═══════════════════════════════════════════════════════ -->
+    <section class="slide">
+      <div class="ct" style="justify-content:center; align-items:center; text-align:center; gap:4vh;">
+        <div data-a data-d="1">
+          <img src="imagenes/logo_tecnoservicios.png" alt="TecnoServicios S.L." style="max-height:30vh;" />
+        </div>
+        <div data-a data-d="2" style="font-size:5vw; font-weight:800; color:var(--blue); line-height:1.1;">
+          ¿Preguntas?
+        </div>
+        <div data-a data-d="4" style="font-size:1.3vw; color:var(--ink2);">
+          Adrián Sánchez Martínez &nbsp;·&nbsp; Iván Sánchez Mártinez &nbsp;·&nbsp; Francisco Zamora Abellán &nbsp;|&nbsp; Proyecto Intermodular 2.º SMR · 2026
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div id="nav">1 / 17</div>
+
+  <script>
+    (function () {
+      const deck = document.getElementById("deck"),
+        nav = document.getElementById("nav"),
+        ss = Array.from(deck.querySelectorAll(".slide")),
+        N = ss.length;
+      let cur = 0, busy = false;
+      deck.style.width = `calc(${N}*100vw)`;
+
+      function go(i) {
+        if (busy || i < 0 || i >= N || i === cur) return;
+        busy = true;
+        ss[cur].classList.remove("is-active");
+        cur = i;
+        ss[cur].querySelectorAll("[data-a]").forEach(e => { e.style.animation = "none"; void e.offsetHeight; e.style.animation = ""; });
+        ss[cur].classList.add("is-active");
+        deck.style.transform = `translateX(calc(-${cur}*100vw))`;
+        nav.textContent = `${cur + 1} / ${N}`;
+        setTimeout(() => { busy = false; }, 650);
+      }
+
+      document.addEventListener("keydown", e => {
+        if (["ArrowRight", " ", "ArrowDown"].includes(e.key)) { e.preventDefault(); go(cur + 1); }
+        if (["ArrowLeft", "ArrowUp"].includes(e.key)) { e.preventDefault(); go(cur - 1); }
+        if (e.key === "Home") go(0);
+        if (e.key === "End") go(N - 1);
+      });
+
+      let tx = 0;
+      document.addEventListener("touchstart", e => { tx = e.touches[0].clientX; }, { passive: true });
+      document.addEventListener("touchend", e => { const d = e.changedTouches[0].clientX - tx; if (Math.abs(d) > 40) go(cur + (d < 0 ? 1 : -1)); }, { passive: true });
+
+      let wl = false;
+      document.addEventListener("wheel", e => { if (wl) return; const p = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; go(cur + (p > 0 ? 1 : -1)); wl = true; setTimeout(() => { wl = false; }, 900); }, { passive: true });
+
+      go(0);
+      ss[0].classList.add("is-active");
+    })();
+  </script>
+</body>
+
+</html>
